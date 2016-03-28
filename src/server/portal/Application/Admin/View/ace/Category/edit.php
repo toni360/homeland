@@ -1,8 +1,6 @@
 <extend name="Public/base"/>
 
 <block name="body">
-<script type="text/javascript" src="__STATIC__/uploadify/jquery.uploadify.min.js"></script>
-	
 <div class="tabbable">
 	<ul class="nav nav-tabs">
 		<li class="active">
@@ -110,50 +108,16 @@
 			<div class="form-group">
 				<label class="col-xs-12 col-sm-2 control-label no-padding-right">分类图标</label>
 				<div class="col-xs-12 col-sm-6">
-    				<input type="file" id="upload_picture">
-    				<input type="hidden" name="icon" id="icon" value="{$info['icon']|default=''}"/>
-    				<div class="upload-img-box">
-        				<notempty name="info['icon']">
-        					<div class="upload-pre-item"><img src="{$info.icon|get_cover='path'}"/></div>
-        				</notempty>
-    				</div>
+                    <div class="upload-wrap">
+                        <a href="javascript:" class="btn btn-sm btn-success pic-upload" name="icon" val="{$info['icon']|default=''}" >
+                            <i class="icon-cloud-upload "></i>上传图片
+                        </a>
+                        <notempty name="info['icon']">
+                            <div class="preview"><img src="<?=imageView2($info['icon'],120,120)?>" width="120"/></div>
+                        </notempty>
+                    </div>
 				</div>
 			</div>
-			<script type="text/javascript">
-			//上传图片
-		    /* 初始化上传插件 */
-			$("#upload_picture").uploadify({
-		        "height"          : 30,
-		        "swf"             : "__STATIC__/uploadify/uploadify.swf",
-		        "fileObjName"     : "download",
-		        "buttonText"      : "上传图片",
-		        "uploader"        : "{:U('File/uploadPicture',array('session_id'=>session_id()))}",
-		        "width"           : 120,
-		        'removeTimeout'	  : 1,
-		        'fileTypeExts'	  : '*.jpg; *.png; *.gif;',
-		        "onUploadSuccess" : uploadPicture,
-		        'onFallback' : function() {
-		            alert('未检测到兼容版本的Flash.');
-		        }
-		    });
-			function uploadPicture(file, data){
-		    	var data = $.parseJSON(data);
-		    	var src = '';
-		        if(data.status){
-		        	$("#icon").val(data.id);
-		        	src = data.url || '__ROOT__' + data.path;
-		        	$("#icon").parent().find('.upload-img-box').html(
-		        		'<div class="upload-pre-item"><img src="' + src + '"/></div>'
-		        	);
-		        } else {
-		        	updateAlert(data.info);
-		        	setTimeout(function(){
-		                $('#top-alert').find('button').click();
-		                $(that).removeClass('disabled').prop('disabled',false);
-		            },1500);
-		        }
-		    }
-			</script>
 		</div>
 
 		<div id="profile" class="tab-pane">
@@ -165,7 +129,6 @@
 						<option value="1">所有人可见</option>
 						<option value="0">不可见</option>
 						<option value="2">管理员可见</option>
-						<option value="3">不在后台菜单展示</option>
 					</select>
 				</div>
 				<span class="check-tips">（是否对用户可见，针对前台）</span>
@@ -231,25 +194,18 @@
 				</div>
 			</div>
 		</div>
-		
-		<div class="clearfix form-actions">
-            <div class="col-xs-12 center">
-    			<input type="hidden" name="id" value="{$info.id|default=''}">
-    			<input type="hidden" name="pid" value="{:isset($category['id'])?$category['id']:$info['pid']}">
-                <button id="sub-btn" class="btn btn-success ajax-post" target-form="form-horizontal" type="submit">
-                    <i class="icon-ok bigger-110"></i> 确认保存
-                </button> 
-                <a href="javascript:history.back(-1);" class="btn btn-info">
-                   <i class="icon-reply"></i>返回上一页
-                </a>  
-            </div>
-        </div>
+        <input type="hidden" name="id" value="{$info.id|default=''}">
+        <input type="hidden" name="pid" value="{:isset($category['id'])?$category['id']:$info['pid']}">
+        <?=ace_srbtn()?>
 	</div>
     </form>
 </div>	
 </block>
 
 <block name="script">
+
+    <include file="Public/upload.js"/>
+    <include file="Public/upload.pic"/>
 	<script type="text/javascript">
 		<present name="info.id">
 		Think.setValue("allow_publish", {$info.allow_publish|default=1});
