@@ -17,8 +17,9 @@ class ApiService{
     public $errmsg='接口调用发生错误,请联系管理员!';
     public $error;
     
-    public function __construct(){
-    
+    public function __construct($api_url=''){
+
+        $this->api_url = empty($api_url) ? C('API_WECHAT') : $api_url;
     }
     
     public function setApiUrl($url){
