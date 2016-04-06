@@ -26,6 +26,10 @@ class AdminController extends Controller {
         if( !UID ){// 还没登录 跳转到登录页面
             $this->redirect('Public/login');
         }
+
+        if(session('user-hasno-pwd') && strtolower(CONTROLLER_NAME.ACTION_NAME) != 'usersetpwd'){
+            $this->redirect('user/setpwd');
+        }
         /* 读取数据库中的配置 */
         $config =   S('DB_CONFIG_DATA');
         if(!$config){
@@ -461,6 +465,7 @@ class AdminController extends Controller {
             $page->setConfig('theme','%FIRST% %UP_PAGE% %LINK_PAGE% %DOWN_PAGE% %END% %HEADER%');
         }
         $p =$page->show();
+
         $this->assign('_page', $p? $p: '');
         $this->assign('_total',$total);
         $options['limit'] = $page->firstRow.','.$page->listRows;

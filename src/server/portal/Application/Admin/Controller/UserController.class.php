@@ -16,50 +16,34 @@ use User\Api\UserApi;
  */
 class UserController extends AdminController {
 
-    public function dtwechat(){
-
-        $userid = intval(I('userid'));
-
-        if(empty($userid)){
-            $this->error('用户ID不能为空！');
+    public function setpwd(){
+        if(!session('user-hasno-pwd')){
+            $this->error('您已经设置了密码！');
         }
-        $prefix = C('DB_PREFIX');
-        $item = M()->table($prefix.'wx_user w')
-            ->field('w.*')
-            ->where(['w.userid'=>$userid])
-            ->find();
+        if(IS_POST){
+            $password = I('password');
+            if(empty($password)){
+                $this->error('新密码不能为空！');
+            }
+            if(strlen($password) < 6){
+                $this->error('密码不能小于6位！');
+            }
+            $repassword = I('repassword');
+            if($password != $repassword){
+                $this->error('两次密码输入不一致！');
+            }
 
-        $this->assign('item',$item);
+            $Api    =   new UserApi();
+            $res    =   $Api->updateInfo(UID, '', ['password'=>$password]);
+            if($res['status']){
+                session('user-hasno-pwd',null);
+                $this->success('设置密码成功！',U('index/index'));
+            }else{
+                $this->error($res['info']);
+            }
 
-        $this->meta_title = '微信用户详情';
-        $this->display();
-    }
-
-    public function wechat(){
-
-        $map = [];
-        $nickname = I('nickname');
-        if(!empty($nickname)){
-            $map['w.nickname'] = ['like', '%'.(string)$nickname.'%'];
-        }
-        $status = I('status',1);
-        if($status != ''){
-            $map['w.subscribe'] = $status;
         }
 
-        $status_list = [
-                        '1'=>'已关注',
-                        '0'=>'已取消关注',
-                        '-1'=>'从未关注过',
-                        ];
-
-        $prefix = C('DB_PREFIX');
-        $model = M()->table($prefix.'wx_user w');
-
-        $this->assign('_list', $this->lists($model,$map,'w.userid desc','w.*'));
-        $this->assign('status_list',$status_list);
-
-        $this->meta_title = '微信用户管理';
         $this->display();
     }
     /**
@@ -71,15 +55,15 @@ class UserController extends AdminController {
         $map['m.status']  =   array('egt',0);
         if(is_numeric($nickname)){
             $map['uid|nickname']=   array(intval($nickname),array('like','%'.$nickname.'%'),'_multi'=>true);
-        }else{
+        }elseif(!empty($nickname)){
             $map['m.nickname']    =   array('like', '%'.(string)$nickname.'%');
         }
-
+        //$map['aga.group_id'] = ['not in', '5,6'];
         $prefix = C('DB_PREFIX');
-        $model = M()->table($prefix.'member m')
-                    ->join($prefix.'ucenter_member um on m.uid = um.id');
-        $list   = $this->lists($model, $map,'','m.*,um.username');
-        int_to_string($list);
+        $model = M()->table($prefix.'ucenter_member um')
+                    ->join($prefix.'member m on m.uid = um.id','left')
+                    ->join($prefix.'auth_group_access aga on aga.uid=um.id', 'left');
+        $list   = $this->lists($model, $map,'','m.*,um.username,um.id');
         $this->assign('_list', $list);
         $this->meta_title = '用户信息';
         $this->display();
@@ -103,7 +87,6 @@ class UserController extends AdminController {
     public function submitNickname(){
         //获取参数
         $nickname = I('post.nickname');
-        $password = I('post.password');
         empty($nickname) && $this->error('请输入昵称');
 
         $Member =   D('Member');
@@ -293,11 +276,10 @@ class UserController extends AdminController {
             if($password != $repassword){
                 $this->error('密码和重复密码不一致！');
             }
-		
-	    $mobile = I('post.mobile');
+
             /* 调用注册接口注册用户 */
             $User   =   new UserApi;
-            $uid    =   $User->register($username, $password, $email,$mobile);
+            $uid    =   $User->register($username, $password, $email,$username);
             if(0 < $uid){ //注册成功
                 $user = array('uid' => $uid, 'nickname' => I('nickname'), 'status' => 1);
                 if(!M('Member')->add($user)){
@@ -335,6 +317,118 @@ class UserController extends AdminController {
             default:  $error = '未知错误';
         }
         return $error;
+    }
+
+    //回访列表
+    public function userReturn() {
+        $search       =   I('search');
+        //$map['um.status']  =   array('egt',0);
+        $map = [];
+        if(is_numeric($search)){
+            $map['c.mobile']=['like', '%' . intval($search) . '%'];//   array(intval($search),array('like','%'.$search.'%'),'_multi'=>true);
+        }elseif(!empty($search)){
+            $map['c.chairman_name|c.chairman_nickname']    =   array('like', '%'.(string)$search.'%');
+        }
+
+        $prefix = C('DB_PREFIX');
+        $model = M()->table($prefix.'user_return_visit urv')
+            ->join($prefix.'company com on com.uid = urv.uid','left')
+            ->join($prefix.'company_reg c on c.uid = urv.uid','left')
+            ->join($prefix.'auth_group_access aga on aga.uid=urv.uid', 'left')
+            ->join($prefix.'auth_group ag on ag.id=aga.group_id', 'left')
+            ->join($prefix.'ucenter_member um on um.id=urv.add_user','left');
+
+        $list   = $this->lists($model, $map,'urv.update_time desc','c.*, ag.title, um.username as huifangren, urv.id as urv_id');
+
+        $this->assign('_list', $list);
+        $this->meta_title = '会员回访列表';
+        $this->display();
+    }
+
+    //回访详细页面
+    public function returnShow() {
+        $id = I('get.id');
+        empty($id) && $this->error('参数不能为空！');
+        $prefix = C('DB_PREFIX');
+        $model = M()->table($prefix.'user_return_visit urv');
+
+        if (IS_POST) {
+            $content = I('content');
+            if(!$model->where(array('id'=>$id))
+                ->save(array(
+                    'content'=>$content,
+                    'update_time'=>time_format()))
+            ){
+                $this->error('修改失败！');
+            }
+
+            $this->success('保存成功！',U('user/userReturn'));
+        }
+
+
+        $model = $model
+            ->join($prefix.'company_reg c on c.uid = urv.uid','left')
+            ->join($prefix.'auth_group_access aga on aga.uid=urv.uid', 'left')
+            ->join($prefix.'auth_group ag on ag.id=aga.group_id', 'left')
+            ->join($prefix.'ucenter_member um on um.id=urv.add_user','left');
+        $data = $model->field(array('c.*','urv.*','ag.title', 'c.insert_time as time', 'um.username as huifangren'))
+            ->where(array('urv.id'=>$id))->find();
+        if (empty($data)) {
+            $this->error('该回访不存在!');
+        }
+        $this->assign('item',$data);
+        $this->meta_title = '会员回访详细信息';
+        $this->display();
+    }
+
+
+    //添加回访信息
+    public function addReturn() {
+        $prefix = C('DB_PREFIX');
+        if (IS_POST) {
+            $return = M()->table($prefix.'user_return_visit');
+            $_POST['insert_time'] = date("Y-m-d H:m:s", time());
+            $_POST['update_time'] = date("Y-m-d H:m:s", time());
+            if ($return->create()) {
+                $result = $return->add();
+                if ($result > 0) {
+                    $this->success('保存成功！',U('user/userReturn'));
+                } else {
+                    $this->error('保存失败！');
+                }
+            } else {
+                $this->error('保存失败！');
+            }
+        }
+
+        $search  =  I('search');
+        $data = [];
+        $map = [];
+
+        if (!empty($search)) {
+            if(is_numeric($search)){
+                $map['cr.mobile']=['like', '%' . intval($search) . '%'];
+            }elseif(!empty($search)){
+                $map['cr.chairman_name|cr.chairman_nickname']    =   array('like', '%'.(string)$search.'%');
+            }
+
+            $model = M()->table($prefix.'company c')
+                ->join($prefix.'company_reg cr on cr.uid = c.uid','left')
+                ->join($prefix.'ucenter_member um on um.id=cr.uid','left')
+                ->join($prefix.'auth_group_access aga on aga.uid=cr.uid', 'left')
+                ->join($prefix.'auth_group ag on ag.id=aga.group_id', 'left');
+            $data = $model->field(array('cr.*' ,'ag.title', 'cr.insert_time as time'))->where($map)->find();
+
+            if (empty($data)) {
+                $this->error('找不到该用户，请重新输入姓名或手机号码查询');
+            }
+
+
+        }
+        $this->assign('item', $data);
+        $this->assign('search', $search);
+        $this->meta_title = '添加回访';
+        $this->display();
     }
 
 }

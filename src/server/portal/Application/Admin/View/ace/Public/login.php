@@ -59,13 +59,12 @@
                                     <img alt="" src="__IMG__/login_logo.png" style="margin-bottom: 6px;">
                                     <span class="white">{:C('WEB_SITE_TITLE')}</span>
                                 </h1>
-                                <h4 class="blue">&copy; 蜂鸟科技</h4>
                             </div>
 
                             <div class="space-6"></div>
 
                             <div class="position-relative">
-                                <div id="login-box" class="login-box visible widget-box no-border">
+                                <div id="login-box" class="login-box <?=(!isset($sms_login) || !$sms_login) ? 'visible' : ''?> widget-box no-border">
                                     <div class="widget-body">
                                         <div class="widget-main">
                                             <h4 class="header blue lighter bigger">
@@ -120,20 +119,21 @@
                                             </form>
                                         </div><!-- /widget-main -->
 
-<!--                                         <div class="toolbar clearfix"> -->
-<!--                                             <div> -->
-<!--                                                 <a href="#" onclick="show_box('forgot-box'); return false;" class="forgot-password-link"> -->
-<!--                                                     <i class="icon-arrow-left"></i> 首次登录/忘记密码 -->
-<!--                                                 </a> -->
-<!--                                             </div> -->
+                                        <div class="toolbar clearfix">
+                                            <div>
+                                            </div>
+                                            <div>
+                                                <a href="javascript:" onclick="show_box('sms-login');return false;" class="user-signup-link">
+                                                    使用短信验证码登录
+                                                    <i class="icon-arrow-right"></i>
+                                                </a>
+                                            </div>
+                                        </div>
 
-<!--                                             <div> -->
-<!--                                             </div> -->
-<!--                                         </div> -->
                                     </div><!-- /widget-body -->
                                 </div><!-- /login-box -->
 
-                                <div id="forgot-box" class="forgot-box widget-box no-border">
+                                <div id="forget-box" class="forgot-box widget-box no-border">
                                     <div class="widget-body">
                                         <div class="widget-main">
                                             <h4 class="header red lighter bigger">
@@ -197,7 +197,7 @@
                                     </div><!-- /widget-body -->
                                 </div><!-- /forgot-box -->
 
-                                <div id="signup-box" class="signup-box widget-box no-border">
+                                <div id="sms-login" class="signup-box <?=(isset($sms_login) && $sms_login) ? 'visible' : ''?> widget-box no-border">
                                     <div class="widget-body">
                                         <div class="widget-main">
                                             <h4 class="header green lighter bigger">
@@ -215,7 +215,7 @@
                                                             <i class="icon-mobile-phone"></i>
                                                         </span>
                                                     </label>
-                                                    
+
                                                     <label class="input-group">
                                                         <input type="text" maxlength="6" autocomplete="off" placeholder="请填写手机验证码" class="form-control input-mask-date only-num" name="verify">
                                                         <span class="input-group-btn">
@@ -241,12 +241,12 @@
                                             </form>
                                         </div>
 
-<!--                                         <div class="toolbar center"> -->
-<!--                                             <a href="#" onclick="show_box('login-box'); return false;" class="back-to-login-link"> -->
-<!--                                                 <i class="icon-arrow-left"></i> -->
-<!--                                                 Back to login -->
-<!--                                             </a> -->
-<!--                                         </div> -->
+                                         <div class="toolbar clearfix">
+                                             <a href="#" onclick="show_box('login-box'); return false;" class="back-to-login-link">
+                                                 <i class="icon-arrow-left"></i>
+                                                 使用用户名密码登录
+                                             </a>
+                                         </div>
                                     </div><!-- /widget-body -->
                                 </div><!-- /signup-box -->
                             </div><!-- /position-relative -->
@@ -277,11 +277,12 @@
 			jQuery('#'+id).addClass('visible');
         }
         var loading;
+
     	//表单提交
     	$("form").submit(function(){
     		var self = $(this);
     		$("button:submit").addClass("log-in").attr("disabled", true);
-            loading = layer.load('请稍后...');
+            loading = layer.load();
             
     		$.post(self.attr("action"), self.serialize(), success, "json").always(function(){
 
@@ -292,17 +293,16 @@
 
     		function success(data){
     			if(data.status){
-    				layer.msg(data.info,1,1,function(){
+    				layer.msg(data.info,{icon:1},function(){
     					window.location.href = data.url;
     				});
     			} else {
     				if(data.url != ''){
-    					layer.msg(data.info,2,3,function(){
+    					layer.msg(data.info,{icon:2},function(){
                             show_box("signup-box");
     					});
-    				    
     				}else{
-    					layer.alert(data.info);
+    					layer.alert(data.info,{icon:2});
     				}
     				//刷新验证码
     				$(".reloadverify").click();
@@ -328,16 +328,16 @@
                 if(/^1\d{10}$/.test(mobile)){
                     $.post("{:U('getAuthCode')}",{mobile:mobile}).done(function(resp){
                         if(resp.status == 1){
-                            layer.msg(resp.info,1,1);
+                            layer.msg(resp.info,{icon:1});
                         }else{
-                            layer.alert(resp.info);
+                            layer.alert(resp.info,{icon:2});
                         }
                     }).fail(function(){
                         
-                        layer.alert('验证码获取失败！');
+                        layer.alert('验证码获取失败！',{icon:2});
                     });
                 }else{
-                	layer.alert('请输入正确的手机号码！');
+                	layer.alert('请输入正确的手机号码！',{icon:2});
                 }
             });
             

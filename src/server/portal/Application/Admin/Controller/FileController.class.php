@@ -7,11 +7,53 @@
 // | Author: 麦当苗儿 <zuojiazi@vip.qq.com> <http://www.zjzit.cn>
 // +----------------------------------------------------------------------
 namespace Admin\Controller;
+
 /**
  * 文件控制器
  * 主要用于下载模型的文件上传和下载
  */
 class FileController extends AdminController {
+
+
+    /**
+     *
+     */
+    public function downToken(){
+        $config = C('UPLOAD_QINIU_CONFIG');
+        // 构建Auth对象
+        $auth = new \Qiniu\Auth($config['accessKey'], $config['secrectKey']);
+        // 私有空间中的外链 http://<domain>/<file_key>
+        // 对链接进行签名
+        $data = [];
+        if(!empty(I('post.url'))){
+            $data['url'] = $auth->privateDownloadUrl(I('post.url'));
+        }
+        if(!empty(I('post.source'))) {
+            $data['source'] = $auth->privateDownloadUrl(I('post.source'));
+        }
+
+        $this->ajaxReturn($data);
+    }
+
+    /**
+     *
+     */
+    public function fileToken(){
+
+        $config = C('UPLOAD_QINIU_CONFIG');
+        $auth = new \Qiniu\Auth($config['accessKey'], $config['secrectKey']);
+        $this->ajaxReturn(['uptoken'=>$auth->uploadToken($config['file_bucket'])]);
+    }
+
+    /**
+     *
+     */
+    public function picToken(){
+
+        $config = C('UPLOAD_QINIU_CONFIG');
+        $auth = new \Qiniu\Auth($config['accessKey'], $config['secrectKey']);
+        $this->ajaxReturn(['uptoken'=>$auth->uploadToken($config['bucket'])]);
+    }
 
     /* 文件上传 */
     public function upload(){
@@ -72,13 +114,13 @@ class FileController extends AdminController {
             C("UPLOAD_{$pic_driver}_CONFIG")
         ); //TODO:上传到远程服务器
 
-        $thumbs = I('post.thumb');
-        
-        $filename = basename($info['download']['path']);
         /* 记录图片信息 */
         if($info){
             $return['status'] = 1;
             $return = array_merge($info['download'], $return);
+            if(isset($return['url'])){
+                $return['src'] = imageView2($return['url']);
+            }
         } else {
             $return['status'] = 0;
             $return['info']   = $Picture->getError();
